@@ -38,8 +38,15 @@ spotless {
         
         removeUnusedImports() 
         
-        endWithNewline() 
-                
+        endWithNewline()     
+    }
+    
+    format("antlr") {
+        target("src/main/antlr/**/*.g4")
+
+        trimTrailingWhitespace()
+        endWithNewline()
+        indentWithSpaces(4)
     }
 }
 
