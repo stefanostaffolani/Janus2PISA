@@ -1,24 +1,19 @@
 package janus2pisa;
 
+import janus2pisa.semantic_analysis.DefinitionVisitor;
+import janus2pisa.semantic_analysis.Scope;
+import java.io.InputStream;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
 public class Main {
-  public static void main(String[] args) {
-    String fib =
-        """
-            procedure fib
-                if n=0 then x1 += 1
-                            x2 += 1
-                        else n -= 1
-                            call fib
-                            x1 += x2
-                            x1 <=> x2
-                fi x1=x2
-            """;
+  public static void main(String[] args) throws Exception {
+    InputStream is = Main.class.getResourceAsStream("/fib.janus");
+    CharStream input = CharStreams.fromStream(is);
+    // CharStream input = CharStreams.fromFileName("fib.janus");
 
     // 1. Lexer
-    JanusLexer lexer = new JanusLexer(CharStreams.fromString(fib));
+    JanusLexer lexer = new JanusLexer(input);
     CommonTokenStream tokens = new CommonTokenStream(lexer);
 
     // 2. Parser
@@ -30,5 +25,10 @@ public class Main {
     // 4. print ast
     System.out.println("AST:");
     System.out.println(tree.toStringTree(parser));
+
+    DefinitionVisitor dfv = new DefinitionVisitor();
+    dfv.visit(tree);
+    Scope globalScope = dfv.getGlobalScope();
+    System.out.println(globalScope.toString());
   }
 }
