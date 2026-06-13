@@ -20,20 +20,20 @@ arrayDec  : ID '[' INT ']' ;
 
 stmBlk : stm+ ;
 
-stm  : ID ROP_ASS expr
-     | ID '[' expr ']' ROP_ASS expr
-     | ID SWAP ID
-     | 'if' expr 'then' stmBlk 'else' stmBlk 'fi' expr
-     | 'from' expr 'do' stmBlk 'loop' stmBlk 'until' expr
-     | 'call' ID
-     | 'uncall' ID
-     | 'skip'
+stm  : ID ROP_ASS expr                                          # SimpleAssignStm
+     | ID '[' expr ']' ROP_ASS expr                             # ArrAssignStm
+     | ID SWAP ID                                               # SwapStm
+     | 'if' expr 'then' stmBlk 'else' stmBlk 'fi' expr          # IfThenStm
+     | 'from' expr 'do' stmBlk 'loop' stmBlk 'until' expr       # FromUntilStm
+     | 'call' ID                                                # CallStm
+     | 'uncall' ID                                              # UncallStm
+     | 'skip'                                                   # SkipStm
      ;
 
-expr : expr OP_GEN expr
-     | INT
-     | ID
-     | ID '[' expr ']'
+expr : expr OP_GEN expr   # GenericOP
+     | INT                # IntegerExpr
+     | ID                 # VariableExpr
+     | ID '[' expr ']'    # ArrayExpr
      ;
 
 // ------------------- LEXER RULES -------------------
