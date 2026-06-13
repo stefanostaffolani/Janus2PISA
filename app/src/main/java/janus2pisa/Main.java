@@ -2,6 +2,7 @@ package janus2pisa;
 
 import janus2pisa.semantic_analysis.DefinitionVisitor;
 import janus2pisa.semantic_analysis.Scope;
+import janus2pisa.semantic_analysis.SemanticAnalysisVisitor;
 import java.io.InputStream;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
@@ -30,5 +31,8 @@ public class Main {
     dfv.visit(tree);
     Scope globalScope = dfv.getGlobalScope();
     System.out.println(globalScope.toString());
+
+    SemanticAnalysisVisitor sav = new SemanticAnalysisVisitor(globalScope);
+    sav.visit(tree);
   }
 }
