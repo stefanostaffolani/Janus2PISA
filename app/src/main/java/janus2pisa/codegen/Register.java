@@ -1,6 +1,6 @@
 package janus2pisa.codegen;
 
-public class Register {
+public class Register implements Comparable<Register> {
   private final String name;
   private int value;
 
@@ -19,6 +19,15 @@ public class Register {
 
   public void setValue(int value) {
     this.value = value;
+  }
+
+  @Override
+  public int compareTo(Register other) {
+    String numThis = this.name.replaceAll("\\D+", "");
+    String numOther = other.name.replaceAll("\\D+", "");
+    int idThis = numThis.isEmpty() ? 0 : Integer.parseInt(numThis);
+    int idOther = numOther.isEmpty() ? 0 : Integer.parseInt(numOther);
+    return Integer.compare(idThis, idOther);
   }
 
   @Override

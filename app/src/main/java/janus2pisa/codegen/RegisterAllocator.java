@@ -3,7 +3,9 @@ package janus2pisa.codegen;
 import janus2pisa.codegen.exceptions.*;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /*
     init free Registers we reserve 3 reserved register and the others for general purpose :
@@ -76,5 +78,9 @@ public class RegisterAllocator {
 
   public boolean isGarbage(Register reg) {
     return this.garbageRegisters.contains(reg);
+  }
+
+  public List<Register> GetGarbageRegisters() {
+    return this.garbageRegisters.stream().sorted().collect(Collectors.toList());
   }
 }

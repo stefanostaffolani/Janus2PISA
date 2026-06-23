@@ -74,13 +74,14 @@ record START() implements Instruction {}
 
 record FINISH() implements Instruction {}
 
-class LabeledInstruction {
-  final String label;
-  final Instruction instruction;
+record LabeledInstruction(String label, Instruction instruction) {
 
-  LabeledInstruction(String label, Instruction instruction) {
-    this.label = label;
-    this.instruction = instruction;
+  static LabeledInstruction of(Instruction i) {
+    return new LabeledInstruction(null, i);
+  }
+
+  static LabeledInstruction labeled(String label, Instruction i) {
+    return new LabeledInstruction(label, i);
   }
 }
 
@@ -123,10 +124,10 @@ class PisaFormatter {
     StringBuilder sb = new StringBuilder();
 
     for (LabeledInstruction li : instructions) {
-      String line = format(li.instruction);
+      String line = format(li.instruction());
 
-      if (li.label != null) {
-        sb.append(li.label).append(": ").append(line);
+      if (li.label() != null) {
+        sb.append(li.label()).append(": ").append(line);
       } else {
         sb.append("\t").append(": ").append(line);
       }
