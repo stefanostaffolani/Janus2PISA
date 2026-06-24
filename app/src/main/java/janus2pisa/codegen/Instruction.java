@@ -30,7 +30,8 @@ public sealed interface Instruction
         SWAPBR,
         DATA,
         START,
-        FINISH {}
+        FINISH,
+        NOP {}
 
 record ADD(Register rd, Register rs) implements Instruction {}
 
@@ -71,6 +72,8 @@ record DATA(int value) implements Instruction {}
 record START() implements Instruction {}
 
 record FINISH() implements Instruction {}
+
+record NOP() implements Instruction {}
 
 record LabeledInstruction(String label, Instruction instruction) {
 

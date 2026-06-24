@@ -34,6 +34,7 @@ public class PisaFormatter {
 
       case START ignored -> "START";
       case FINISH ignored -> "FINISH";
+      case NOP ignored -> "NOP";
     };
   }
 
@@ -41,17 +42,20 @@ public class PisaFormatter {
     StringBuilder sb = new StringBuilder();
 
     int max_len = 0;
-    for (LabeledInstruction li : instructions){
+    for (LabeledInstruction li : instructions) {
       if (li.label() != null && li.label().length() > max_len) {
         max_len = li.label().length();
-      } 
+      }
     }
 
     for (LabeledInstruction li : instructions) {
       String line = format(li.instruction());
 
       if (li.label() != null) {
-        sb.append(li.label()).append(" ".repeat(max_len - li.label().length())).append(": ").append(line);
+        sb.append(li.label())
+            .append(" ".repeat(max_len - li.label().length()))
+            .append(": ")
+            .append(line);
       } else {
         sb.append(" ".repeat(max_len)).append(": ").append(line);
       }
