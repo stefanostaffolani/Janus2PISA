@@ -1,15 +1,21 @@
 package janus2pisa;
 
+import janus2pisa.codegen.CodeGenerationVisitor;
+import janus2pisa.codegen.PisaFormatter;
+import janus2pisa.codegen.VisitResult;
 import janus2pisa.semantic_analysis.DefinitionVisitor;
 import janus2pisa.semantic_analysis.Scope;
 import janus2pisa.semantic_analysis.SemanticAnalysisVisitor;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
 public class Main {
   public static void main(String[] args) throws Exception {
-    InputStream is = Main.class.getResourceAsStream("/fib.janus");
+    InputStream is = Main.class.getResourceAsStream("/example.janus");
     CharStream input = CharStreams.fromStream(is);
     // CharStream input = CharStreams.fromFileName("fib.janus");
 
@@ -34,5 +40,16 @@ public class Main {
 
     SemanticAnalysisVisitor sav = new SemanticAnalysisVisitor(globalScope);
     sav.visit(tree);
+
+    // start cgen
+    CodeGenerationVisitor cgv = new CodeGenerationVisitor(globalScope);
+    VisitResult isa = cgv.visit(tree);
+    try {
+      String code = PisaFormatter.printLabeledInstructions(isa.instructions());
+
+      Files.writeString(Path.of("output.pisa"), code);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
