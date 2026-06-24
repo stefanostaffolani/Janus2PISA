@@ -6,18 +6,12 @@ import janus2pisa.JanusParser;
 public class DefinitionVisitor extends JanusBaseVisitor<Void> {
 
   private Scope globalScope = new BlockScope(null);
-  private int LabelCount = 0;
   private int offset = 0;
 
   public DefinitionVisitor() {}
 
   public Scope getGlobalScope() {
     return globalScope;
-  }
-
-  public String newLabel() {
-    String base = "func";
-    return base + LabelCount++;
   }
 
   @Override
@@ -57,7 +51,7 @@ public class DefinitionVisitor extends JanusBaseVisitor<Void> {
     if (procSym != null) {
       throw new RuntimeException("Semantic Error: Procedure already defined -> " + ProcName);
     } else {
-      procSym = new ProcedureSymbol(ProcName, globalScope, 0, this.newLabel());
+      procSym = new ProcedureSymbol(ProcName, globalScope, 0, ProcName);
       globalScope.define(procSym);
     }
     return null;

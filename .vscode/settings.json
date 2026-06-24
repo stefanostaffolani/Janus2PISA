@@ -1,3 +1,7 @@
 {
-    "java.compile.nullAnalysis.mode": "automatic"
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.project.sourcePaths": [
+        "app/src/main/java",
+        "app/build/generated-src/antlr/main"
+    ]
 }

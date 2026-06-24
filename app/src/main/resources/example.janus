@@ -1,0 +1,5 @@
+x y
+procedure main
+  x += 3
+  y += x
+  x <=> y
