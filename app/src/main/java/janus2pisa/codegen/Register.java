@@ -32,7 +32,7 @@ public class Register implements Comparable<Register> {
 
   @Override
   public String toString() {
-    return "Register " + this.name + ", value : " + this.value;
+    return this.name;
   }
 
   @Override
