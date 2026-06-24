@@ -1,8 +1,9 @@
 package janus2pisa.codegen;
 
 import janus2pisa.codegen.exceptions.*;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -15,7 +16,7 @@ import java.util.stream.Collectors;
 */
 public class RegisterAllocator {
   private int numberOfRegisters;
-  private Set<Register> freeRegisters;
+  private Deque<Register> freeRegisters;
   private Set<Register> committedRegisters;
   private Set<Register> garbageRegisters;
 
@@ -24,13 +25,13 @@ public class RegisterAllocator {
       throw new IllegalArgumentException("Number of registers must be at least 16");
     }
     this.numberOfRegisters = numberOfRegisters;
-    committedRegisters = new HashSet<Register>();
-    garbageRegisters = new HashSet<Register>();
+    committedRegisters = new LinkedHashSet<Register>();
+    garbageRegisters = new LinkedHashSet<Register>();
 
-    this.freeRegisters =
-        java.util.stream.IntStream.range(3, this.numberOfRegisters)
-            .mapToObj(i -> new Register("R" + i, 0))
-            .collect(java.util.stream.Collectors.<Register>toSet());
+    this.freeRegisters = new ArrayDeque<>();
+    for (int i = this.numberOfRegisters - 1; i >= 0; i--) {
+      freeRegisters.push(new Register("R" + i, 0));
+    }
   }
 
   public RegisterAllocator() {
@@ -40,12 +41,8 @@ public class RegisterAllocator {
   public Register getFreeRegister() {
     if (freeRegisters.isEmpty()) {
       throw new RegisterAllocatorException();
-    } else {
-      Iterator<Register> it = freeRegisters.iterator();
-      Register reg = it.next();
-      it.remove();
-      return reg;
     }
+    return freeRegisters.pop();
   }
 
   public void commitRegister(Register reg) {
@@ -61,11 +58,9 @@ public class RegisterAllocator {
   }
 
   public void freeRegister(Register reg) {
-    if (committedRegisters.remove(reg) && garbageRegisters.remove(reg)) {
-      freeRegisters.add(reg);
-    } else {
-      throw new RegisterAllocatorException("Register " + reg + " is not committed or garbage");
-    }
+    committedRegisters.remove(reg);
+    garbageRegisters.remove(reg);
+    freeRegisters.push(reg);
   }
 
   public boolean isFree(Register reg) {
