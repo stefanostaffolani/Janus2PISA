@@ -336,13 +336,13 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     VisitResult e = visit(ctx.expr());
     Register re = e.resultRegister();
-    isa.addAll(e.instructions());
-    // invert expression
+    isa.addAll(e.instructions()); // invert expression
     List<LabeledInstruction> e1 =
         e.instructions().stream()
             .map(old -> new LabeledInstruction(old.label(), old))
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e1);
+
     isa.add(LabeledInstruction.of(new EXCH(rd, ra)));
 
     // here we should check for rop assign
@@ -447,7 +447,6 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     // 9. remove garbage of e1 (inverse of 1.)
     isa.addAll(inv.invertListofInstructions(e2));
     isa.addAll(this.ClearGarbage().instructions());
-
     return new VisitResult(isa, null);
   }
 
@@ -628,6 +627,20 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     List<LabeledInstruction> isa = new ArrayList<>();
     String name = ctx.ID().getText();
     isa.add(LabeledInstruction.of(new BRA(name)));
+    return new VisitResult(isa, null);
+  }
+
+  @Override
+  public VisitResult visitStmBlk(JanusParser.StmBlkContext ctx) {
+    List<LabeledInstruction> isa = new ArrayList<>();
+
+    for (JanusParser.StmContext stm : ctx.stm()) {
+      VisitResult res = visit(stm);
+      if (res != null) {
+        isa.addAll(res.instructions());
+      }
+    }
+
     return new VisitResult(isa, null);
   }
 }
