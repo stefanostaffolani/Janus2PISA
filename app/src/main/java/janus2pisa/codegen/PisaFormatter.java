@@ -16,10 +16,10 @@ public class PisaFormatter {
       case XORI x -> "XORI " + x.rd() + " " + x.c();
 
       case ORX o -> "ORX " + o.rd() + " " + o.rs();
-      case ANDX a -> "ANDX " + a.rd1() + " " + a.rd2() + " " + a.rs();
+      case ANDX a -> "ANDX " + a.rd() + " " + a.rt() + " " + a.rs();
       case SLTX s -> "SLTX " + s.rd() + " " + s.rs() + " " + s.rt();
 
-      case EXCH e -> "EXCH " + e.rd() + " " + e.rs();
+      case EXCH e -> "EXCH " + e.rd() + " " + e.ra();
 
       case BRA b -> "BRA " + b.label();
       case RBRA r -> "RBRA " + r.label();

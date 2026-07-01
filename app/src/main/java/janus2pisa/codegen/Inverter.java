@@ -4,7 +4,7 @@ import janus2pisa.codegen.exceptions.InverterException;
 import java.util.ArrayList;
 import java.util.List;
 
-class Inverter {
+public class Inverter {
   public Instruction invertSingleInstruction(Instruction instruction) {
     return switch (instruction) {
       case ADD i -> {
@@ -29,16 +29,16 @@ class Inverter {
         yield new XORI(i.rd(), i.c());
       }
       case ORX i -> {
-        yield new ORX(i.rd(), i.rs());
+        yield new ORX(i.rd(), i.rs(), i.rt());
       }
       case ANDX i -> {
-        yield new ANDX(i.rd1(), i.rd2(), i.rs());
+        yield new ANDX(i.rd(), i.rs(), i.rt());
       }
       case SLTX i -> {
         yield new SLTX(i.rd(), i.rs(), i.rt());
       }
       case EXCH i -> {
-        yield new EXCH(i.rd(), i.rs());
+        yield new EXCH(i.rd(), i.ra());
       }
       case BRA i -> {
         yield new BRA(i.label());

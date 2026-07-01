@@ -47,13 +47,13 @@ record SUBI(Register rd, int c) implements Instruction {}
 
 record XORI(Register rd, int c) implements Instruction {}
 
-record ORX(Register rd, Register rs) implements Instruction {}
+record ORX(Register rd, Register rs, Register rt) implements Instruction {}
 
-record ANDX(Register rd1, Register rd2, Register rs) implements Instruction {}
+record ANDX(Register rd, Register rs, Register rt) implements Instruction {}
 
 record SLTX(Register rd, Register rs, Register rt) implements Instruction {}
 
-record EXCH(Register rd, Register rs) implements Instruction {}
+record EXCH(Register rd, Register ra) implements Instruction {}
 
 record BRA(String label) implements Instruction {}
 
@@ -74,18 +74,3 @@ record START() implements Instruction {}
 record FINISH() implements Instruction {}
 
 record NOP() implements Instruction {}
-
-record LabeledInstruction(String label, Instruction instruction) {
-
-  public LabeledInstruction(String label, LabeledInstruction old) {
-    this(label, old.instruction());
-  }
-
-  static LabeledInstruction of(Instruction i) {
-    return new LabeledInstruction(null, i);
-  }
-
-  static LabeledInstruction labeled(String label, Instruction i) {
-    return new LabeledInstruction(label, i);
-  }
-}
