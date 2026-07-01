@@ -5,8 +5,9 @@ A simple Janus compiler for Pendulum Instruction Set Architecture currently unde
 This project is inspired by the PyJanus2PISA compiler developed by Yokoyama, and it is my first project in the field of Reversible Computing. The compiler is built using ANTLR visitors, and the compilation techniques implemented are described in *Clean Translation of an Imperative Reversible Programming Language*.
 
 ## Build and Run
-
+```sh
 ./gradlew build run
+```
 
 ## References
 
