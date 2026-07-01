@@ -204,14 +204,14 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
         Register r = this.regAllocator.getFreeRegister();
         isa.add(LabeledInstruction.of(new ANDX(r, left.resultRegister(), right.resultRegister())));
         this.regAllocator.toGarbage(right.resultRegister());
-        this.regAllocator.freeRegister(left.resultRegister());
+        this.regAllocator.toGarbage(left.resultRegister());
         this.regAllocator.commitRegister(r);
         yield new VisitResult(isa, r);
       }
       case "||" -> {
         Register r = this.regAllocator.getFreeRegister();
-        isa.add(LabeledInstruction.of(new ORX(r, left.resultRegister())));
-        isa.add(LabeledInstruction.of(new ORX(r, right.resultRegister())));
+        isa.add(LabeledInstruction.of(new ORX(r, left.resultRegister(), right.resultRegister())));
+        // isa.add(LabeledInstruction.of(new ORX(r, right.resultRegister())));
         this.regAllocator.toGarbage(left.resultRegister());
         this.regAllocator.toGarbage(right.resultRegister());
         this.regAllocator.commitRegister(r);
@@ -220,15 +220,15 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
       case "&" -> {
         Register r = this.regAllocator.getFreeRegister();
         isa.add(LabeledInstruction.of(new ANDX(r, left.resultRegister(), right.resultRegister())));
-        this.regAllocator.freeRegister(left.resultRegister());
+        this.regAllocator.toGarbage(left.resultRegister());
         this.regAllocator.toGarbage(right.resultRegister());
         this.regAllocator.commitRegister(r);
         yield new VisitResult(isa, r);
       }
       case "|" -> {
         Register r = this.regAllocator.getFreeRegister();
-        isa.add(LabeledInstruction.of(new ORX(r, left.resultRegister())));
-        isa.add(LabeledInstruction.of(new ORX(r, right.resultRegister())));
+        isa.add(LabeledInstruction.of(new ORX(r, left.resultRegister(), right.resultRegister())));
+        // isa.add(LabeledInstruction.of(new ORX(r, right.resultRegister())));
         this.regAllocator.toGarbage(left.resultRegister());
         this.regAllocator.toGarbage(right.resultRegister());
         this.regAllocator.commitRegister(r);
@@ -237,29 +237,43 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
       case "=" -> {
         // x=y iff !(x < y) && !(y < x)
-        Register r = this.regAllocator.getFreeRegister();
+        // using de morgan -> ORX
+        // using XORI 1 for negation of 0 or 1
+        Register rs = this.regAllocator.getFreeRegister();
+        Register rd = this.regAllocator.getFreeRegister();
         Register rt = this.regAllocator.getFreeRegister();
-        isa.add(LabeledInstruction.of(new SLTX(r, left.resultRegister(), right.resultRegister())));
+        isa.add(LabeledInstruction.of(new SLTX(rs, left.resultRegister(), right.resultRegister())));
         isa.add(LabeledInstruction.of(new SLTX(rt, right.resultRegister(), left.resultRegister())));
-        isa.add(LabeledInstruction.of(new ORX(r, rt)));
-        isa.add(LabeledInstruction.of(new XORI(r, 1)));
-        this.regAllocator.freeRegister(rt);
+        this.regAllocator.commitRegister(rt);
+        this.regAllocator.commitRegister(rs);
+        isa.add(LabeledInstruction.of(new ORX(rd, rs, rt)));
+        isa.add(LabeledInstruction.of(new XORI(rd, 1)));
+
+        this.regAllocator.toGarbage(rt);
+        this.regAllocator.toGarbage(rs);
+
         this.regAllocator.toGarbage(left.resultRegister());
         this.regAllocator.toGarbage(right.resultRegister());
-        this.regAllocator.commitRegister(r);
-        yield new VisitResult(isa, r);
+        this.regAllocator.commitRegister(rd);
+        yield new VisitResult(isa, rd);
       }
       case "!=" -> {
-        Register r = this.regAllocator.getFreeRegister();
+        Register rs = this.regAllocator.getFreeRegister();
+        Register rd = this.regAllocator.getFreeRegister();
         Register rt = this.regAllocator.getFreeRegister();
-        isa.add(LabeledInstruction.of(new SLTX(r, left.resultRegister(), right.resultRegister())));
+        isa.add(LabeledInstruction.of(new SLTX(rs, left.resultRegister(), right.resultRegister())));
         isa.add(LabeledInstruction.of(new SLTX(rt, right.resultRegister(), left.resultRegister())));
-        isa.add(LabeledInstruction.of(new ORX(r, rt)));
-        this.regAllocator.freeRegister(rt);
+        this.regAllocator.commitRegister(rt);
+        this.regAllocator.commitRegister(rs);
+        isa.add(LabeledInstruction.of(new ORX(rd, rs, rt)));
+
+        this.regAllocator.toGarbage(rt);
+        this.regAllocator.toGarbage(rs);
+
         this.regAllocator.toGarbage(left.resultRegister());
         this.regAllocator.toGarbage(right.resultRegister());
-        this.regAllocator.commitRegister(r);
-        yield new VisitResult(isa, r);
+        this.regAllocator.commitRegister(rd);
+        yield new VisitResult(isa, rd);
       }
       default -> throw new CodeGenerationException("Unknown operator " + op);
     };
@@ -297,15 +311,15 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
   public VisitResult visitProg(JanusParser.ProgContext ctx) {
     List<LabeledInstruction> isa = new ArrayList<>();
     VisitResult decs, procs;
-    for (DecContext dc : ctx.dec()) {
-      decs = visit(dc);
-      isa.addAll(decs.instructions());
-    }
     for (ProcContext pc : ctx.proc()) {
       procs = visit(pc);
       isa.addAll(procs.instructions());
     }
     isa.add(LabeledInstruction.labeled("start", new START()));
+    for (DecContext dc : ctx.dec()) {
+      decs = visit(dc);
+      isa.addAll(decs.instructions());
+    }
     isa.add(LabeledInstruction.of(new ADDI(this.rsp, this.offset)));
     isa.add(LabeledInstruction.of(new BRA("main")));
     isa.add(LabeledInstruction.of(new SUBI(rsp, offset)));
