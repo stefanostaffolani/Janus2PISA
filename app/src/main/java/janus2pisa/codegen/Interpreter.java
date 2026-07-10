@@ -1,10 +1,12 @@
 package janus2pisa.codegen;
 
-import janus2pisa.codegen.exceptions.InterpreterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
+import janus2pisa.codegen.exceptions.InterpreterException;
 
 public class Interpreter {
   private final int STACK_SIZE = 100;
@@ -26,16 +28,16 @@ public class Interpreter {
     br = 0;
     dir = 1;
     inv = new Inverter();
-    memory = new ArrayList<Integer>();
+    memory = new ArrayList<>();
     for (int i = 0; i < STACK_SIZE; i++) {
       memory.add(0);
     }
-    label2loc = new HashMap<String, Integer>();
+    label2loc = new HashMap<>();
   }
 
   private Integer getRegisterIndex(Register r) {
     String name = r.getName();
-    return Integer.parseInt(name.replaceAll("\\D+", ""));
+    return Integer.valueOf(name.replaceAll("\\D+", ""));
   }
 
   private void convLabel2Loc(List<LabeledInstruction> isa) {
@@ -48,9 +50,6 @@ public class Interpreter {
   }
 
   public void exec(Instruction li) {
-    System.out.println(li);
-    System.out.println(pc);
-    System.out.println(br);
     switch (li) {
       case ADD i -> {
         Integer idx1 = getRegisterIndex(i.rd());
@@ -152,8 +151,6 @@ public class Interpreter {
       }
       case BEQ i -> {
         // branch if regs are equal
-        // System.out.println(i.rd().getValue());
-        // System.out.println(i.rs().getValue());
         Integer offset = label2loc.get(i.label()) - pc;
         Integer idx1 = getRegisterIndex(i.rd());
         Integer idx2 = getRegisterIndex(i.rs());
@@ -190,10 +187,7 @@ public class Interpreter {
         Integer idx1 = getRegisterIndex(i.rd());
         Register rd = registers[idx1];
         Integer tmp = rd.getValue();
-        // Integer rd_idx = getRegisterIndex(rd);
         registers[idx1].setValue(br);
-        // System.out.println(tmp);
-        // System.out.println(br);
         br = tmp;
       }
       case DATA i -> {
@@ -227,7 +221,7 @@ public class Interpreter {
     Integer startLoc = label2loc.get("start");
     System.out.print(label2loc);
     pc += startLoc;
-    while (pc != finishLoc) {
+    while (!Objects.equals(pc, finishLoc)) {
       LabeledInstruction ins = isa.get(pc);
       if (dir == -1) {
         this.exec(inv.invertSingleInstruction(ins.instruction()));
