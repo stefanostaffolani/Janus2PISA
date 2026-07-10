@@ -35,6 +35,7 @@ public class PisaFormatter {
       case START ignored -> "START";
       case FINISH ignored -> "FINISH";
       case NOP ignored -> "NOP";
+      case PANIC ignored -> "PANIC";
     };
   }
 
