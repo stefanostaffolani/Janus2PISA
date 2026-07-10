@@ -1,15 +1,18 @@
 package janus2pisa.codegen;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import janus2pisa.JanusBaseVisitor;
 import janus2pisa.JanusParser;
 import janus2pisa.JanusParser.DecContext;
 import janus2pisa.JanusParser.ProcContext;
 import janus2pisa.codegen.exceptions.CodeGenerationException;
-import janus2pisa.semantic_analysis.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import janus2pisa.semantic_analysis.ArraySymbol;
+import janus2pisa.semantic_analysis.Scope;
+import janus2pisa.semantic_analysis.VariableSymbol;
 
 public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
@@ -298,10 +301,10 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     Register rc = this.regAllocator.getFreeRegister();
     isa.add(LabeledInstruction.of(new ADDI(ra, offset1)));
     isa.add(LabeledInstruction.of(new ADDI(rb, offset2)));
-    isa.add(LabeledInstruction.of(new EXCH(ra, rc)));
-    isa.add(LabeledInstruction.of(new EXCH(rb, rc)));
-    isa.add(LabeledInstruction.of(new EXCH(ra, rc)));
-    isa.add(LabeledInstruction.of(new EXCH(ra, rc)));
+    isa.add(LabeledInstruction.of(new EXCH(rc, ra)));
+    isa.add(LabeledInstruction.of(new EXCH(rc, rb)));
+    isa.add(LabeledInstruction.of(new EXCH(rc, ra)));
+    // isa.add(LabeledInstruction.of(new EXCH(ra, rc)));
     isa.add(LabeledInstruction.of(new SUBI(ra, offset1)));
     isa.add(LabeledInstruction.of(new SUBI(rb, offset2)));
     return new VisitResult(isa, null);
@@ -327,8 +330,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     // error routine label
 
-    isa.add(LabeledInstruction.labeled("error", new BRA("error_loop")));
-    isa.add(LabeledInstruction.labeled("error_loop", new BRA("error")));
+    isa.add(LabeledInstruction.labeled("error", new PANIC()));
 
     return new VisitResult(isa, null);
   }
@@ -366,13 +368,13 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     switch (ctx.ROP_ASS().getText()) {
       case "+=" -> {
-        isa.add(LabeledInstruction.of(new ADD(ra, re)));
+        isa.add(LabeledInstruction.of(new ADD(rd, re)));
       }
       case "-=" -> {
-        isa.add(LabeledInstruction.of(new SUB(ra, re)));
+        isa.add(LabeledInstruction.of(new SUB(rd, re)));
       }
       case "^=" -> {
-        isa.add(LabeledInstruction.of(new XOR(ra, re)));
+        isa.add(LabeledInstruction.of(new XOR(rd, re)));
       }
       default -> {
         throw new CodeGenerationException("Unknown ROP Assign Symbol " + ctx.ROP_ASS().getText());
@@ -388,7 +390,6 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     // add inverse of expr
     isa.addAll(this.inv.invertListofInstructions(e1));
     isa.addAll(this.ClearGarbage().instructions());
-
     return new VisitResult(isa, null);
   }
 
@@ -473,7 +474,6 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     String test_false_label = this.newLabel("test_false");
     String assert_true_label = this.newLabel("assert_true");
     String assert_label = this.newLabel("assert");
-
     isa.add(LabeledInstruction.of(new BNE(rt, this.r0, "error")));
 
     VisitResult e = visit(ctx.expr(0));
@@ -615,9 +615,9 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     List<LabeledInstruction> isa = new ArrayList<>();
 
     isa.add(LabeledInstruction.labeled(label_top, new BRA(label_bottom)));
-    isa.add(LabeledInstruction.labeled(name, new SUBI(this.rsp, 1)));
+    isa.add(LabeledInstruction.of(new SUBI(this.rsp, 1)));
     isa.add(LabeledInstruction.of(new EXCH(this.rro, this.rsp)));
-    isa.add(LabeledInstruction.of(new SWAPBR(this.rro)));
+    isa.add(LabeledInstruction.labeled(name, new SWAPBR(this.rro)));
     isa.add(LabeledInstruction.of(new NEG(this.rro)));
     isa.add(LabeledInstruction.of(new EXCH(this.rro, this.rsp)));
     isa.add(LabeledInstruction.of(new ADDI(this.rsp, 1)));
@@ -632,7 +632,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
   public VisitResult visitCallStm(JanusParser.CallStmContext ctx) {
     List<LabeledInstruction> isa = new ArrayList<>();
     String name = ctx.ID().getText();
-    isa.add(LabeledInstruction.of(new RBRA(name)));
+    isa.add(LabeledInstruction.of(new BRA(name)));
     return new VisitResult(isa, null);
   }
 
@@ -640,7 +640,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
   public VisitResult visitUncallStm(JanusParser.UncallStmContext ctx) {
     List<LabeledInstruction> isa = new ArrayList<>();
     String name = ctx.ID().getText();
-    isa.add(LabeledInstruction.of(new BRA(name)));
+    isa.add(LabeledInstruction.of(new RBRA(name)));
     return new VisitResult(isa, null);
   }
 
