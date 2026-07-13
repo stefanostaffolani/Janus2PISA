@@ -76,4 +76,4 @@ record FINISH() implements Instruction {}
 
 record NOP() implements Instruction {}
 
-record  PANIC() implements Instruction {}
+record PANIC() implements Instruction {}

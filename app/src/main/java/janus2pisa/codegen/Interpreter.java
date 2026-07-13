@@ -1,12 +1,11 @@
 package janus2pisa.codegen;
 
+import janus2pisa.codegen.exceptions.InterpreterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import janus2pisa.codegen.exceptions.InterpreterException;
 
 public class Interpreter {
   private final int STACK_SIZE = 100;
