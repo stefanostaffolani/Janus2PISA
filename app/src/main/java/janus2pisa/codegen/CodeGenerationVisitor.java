@@ -1,10 +1,5 @@
 package janus2pisa.codegen;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import janus2pisa.JanusBaseVisitor;
 import janus2pisa.JanusParser;
 import janus2pisa.JanusParser.DecContext;
@@ -13,6 +8,10 @@ import janus2pisa.codegen.exceptions.CodeGenerationException;
 import janus2pisa.semantic_analysis.ArraySymbol;
 import janus2pisa.semantic_analysis.Scope;
 import janus2pisa.semantic_analysis.VariableSymbol;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
@@ -242,40 +241,67 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
         // x=y iff !(x < y) && !(y < x)
         // using de morgan -> ORX
         // using XORI 1 for negation of 0 or 1
-        Register rs = this.regAllocator.getFreeRegister();
+        // Register rs = this.regAllocator.getFreeRegister();
+        // Register rd = this.regAllocator.getFreeRegister();
+        // Register rt = this.regAllocator.getFreeRegister();
+        // isa.add(LabeledInstruction.of(new SLTX(rs, left.resultRegister(),
+        // right.resultRegister())));
+        // isa.add(LabeledInstruction.of(new SLTX(rt, right.resultRegister(),
+        // left.resultRegister())));
+        // this.regAllocator.commitRegister(rt);
+        // this.regAllocator.commitRegister(rs);
+        // isa.add(LabeledInstruction.of(new ORX(rd, rs, rt)));
+        // isa.add(LabeledInstruction.of(new XORI(rd, 1)));
+
+        // this.regAllocator.toGarbage(rt);
+        // this.regAllocator.toGarbage(rs);
+
+        // this.regAllocator.toGarbage(left.resultRegister());
+        // this.regAllocator.toGarbage(right.resultRegister());
+        // this.regAllocator.commitRegister(rd);
+
+        // Following the paper we can use only 1 register
+        // SLTX rd r_x r_y
+        // SLTX rd r_x r_y
+        // XORI rd 1
         Register rd = this.regAllocator.getFreeRegister();
-        Register rt = this.regAllocator.getFreeRegister();
-        isa.add(LabeledInstruction.of(new SLTX(rs, left.resultRegister(), right.resultRegister())));
-        isa.add(LabeledInstruction.of(new SLTX(rt, right.resultRegister(), left.resultRegister())));
-        this.regAllocator.commitRegister(rt);
-        this.regAllocator.commitRegister(rs);
-        isa.add(LabeledInstruction.of(new ORX(rd, rs, rt)));
+        isa.add(LabeledInstruction.of(new SLTX(rd, left.resultRegister(), right.resultRegister())));
+        isa.add(LabeledInstruction.of(new SLTX(rd, right.resultRegister(), left.resultRegister())));
         isa.add(LabeledInstruction.of(new XORI(rd, 1)));
-
-        this.regAllocator.toGarbage(rt);
-        this.regAllocator.toGarbage(rs);
-
         this.regAllocator.toGarbage(left.resultRegister());
         this.regAllocator.toGarbage(right.resultRegister());
         this.regAllocator.commitRegister(rd);
         yield new VisitResult(isa, rd);
       }
       case "!=" -> {
-        Register rs = this.regAllocator.getFreeRegister();
+        // Following the paper we can use only 1 register
+        // SLTX rd r_x r_y
+        // SLTX rd r_x r_y
+        // XORI rd 1
         Register rd = this.regAllocator.getFreeRegister();
-        Register rt = this.regAllocator.getFreeRegister();
-        isa.add(LabeledInstruction.of(new SLTX(rs, left.resultRegister(), right.resultRegister())));
-        isa.add(LabeledInstruction.of(new SLTX(rt, right.resultRegister(), left.resultRegister())));
-        this.regAllocator.commitRegister(rt);
-        this.regAllocator.commitRegister(rs);
-        isa.add(LabeledInstruction.of(new ORX(rd, rs, rt)));
-
-        this.regAllocator.toGarbage(rt);
-        this.regAllocator.toGarbage(rs);
+        isa.add(LabeledInstruction.of(new SLTX(rd, left.resultRegister(), right.resultRegister())));
+        isa.add(LabeledInstruction.of(new SLTX(rd, right.resultRegister(), left.resultRegister())));
 
         this.regAllocator.toGarbage(left.resultRegister());
         this.regAllocator.toGarbage(right.resultRegister());
         this.regAllocator.commitRegister(rd);
+        // Register rs = this.regAllocator.getFreeRegister();
+        // Register rd = this.regAllocator.getFreeRegister();
+        // Register rt = this.regAllocator.getFreeRegister();
+        // isa.add(LabeledInstruction.of(new SLTX(rs, left.resultRegister(),
+        // right.resultRegister())));
+        // isa.add(LabeledInstruction.of(new SLTX(rt, right.resultRegister(),
+        // left.resultRegister())));
+        // this.regAllocator.commitRegister(rt);
+        // this.regAllocator.commitRegister(rs);
+        // isa.add(LabeledInstruction.of(new ORX(rd, rs, rt)));
+
+        // this.regAllocator.toGarbage(rt);
+        // this.regAllocator.toGarbage(rs);
+
+        // this.regAllocator.toGarbage(left.resultRegister());
+        // this.regAllocator.toGarbage(right.resultRegister());
+        // this.regAllocator.commitRegister(rd);
         yield new VisitResult(isa, rd);
       }
       default -> throw new CodeGenerationException("Unknown operator " + op);
@@ -486,31 +512,20 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     Collections.reverse(e1);
 
     isa.addAll(e.instructions());
-
     isa.add(LabeledInstruction.of(new XOR(rt, re)));
-
     isa.addAll(inv.invertListofInstructions(e1));
     isa.addAll(this.ClearGarbage().instructions());
-
     isa.add(LabeledInstruction.labeled(test_label, new BEQ(rt, this.r0, test_false_label)));
-
     isa.add(LabeledInstruction.of(new XORI(rt, 1)));
-
     VisitResult s1 = visit(ctx.stmBlk(0));
     isa.addAll(s1.instructions());
-
     isa.add(LabeledInstruction.of(new XORI(rt, 1)));
-
     isa.add(LabeledInstruction.labeled(assert_true_label, new BRA(assert_label)));
-
     isa.add(LabeledInstruction.labeled(test_false_label, new BRA(test_label)));
-
     VisitResult s2 = visit(ctx.stmBlk(1));
     isa.addAll(s2.instructions());
-
     isa.add(LabeledInstruction.labeled(assert_label, new BNE(rt, r0, assert_true_label)));
-
-    e = visit(ctx.expr(0));
+    e = visit(ctx.expr(1));
     re = e.resultRegister();
 
     List<LabeledInstruction> e2 =
@@ -520,12 +535,10 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     Collections.reverse(e2);
 
     isa.addAll(e.instructions());
-
     isa.add(LabeledInstruction.of(new XOR(rt, re)));
     isa.addAll(inv.invertListofInstructions(e2));
     isa.addAll(this.ClearGarbage().instructions());
     isa.add(LabeledInstruction.of(new BNE(rt, r0, "error")));
-
     return new VisitResult(isa, null);
   }
 
