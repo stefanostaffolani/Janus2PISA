@@ -92,16 +92,16 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     List<LabeledInstruction> isa = new ArrayList<>();
     String name = ctx.ID().getText();
     VariableSymbol var = (VariableSymbol) scope.resolve_recursively(name);
-    int offset = var.getOffset();
+    int var_offset = var.getOffset();
     // use EXCH-XOR-EXCH pattern for variable use
     Register ra = this.regAllocator.getFreeRegister();
     Register rd = this.regAllocator.getFreeRegister();
     Register rv = this.regAllocator.getFreeRegister();
-    isa.add(LabeledInstruction.of(new ADDI(ra, offset)));
+    isa.add(LabeledInstruction.of(new ADDI(ra, var_offset)));
     isa.add(LabeledInstruction.of(new EXCH(rv, ra)));
     isa.add(LabeledInstruction.of(new XOR(rd, rv)));
     isa.add(LabeledInstruction.of(new EXCH(rv, ra)));
-    isa.add(LabeledInstruction.of(new SUBI(ra, offset)));
+    isa.add(LabeledInstruction.of(new SUBI(ra, var_offset)));
     this.regAllocator.freeRegister(ra);
     this.regAllocator.freeRegister(rv);
     this.regAllocator.commitRegister(rd);
@@ -114,7 +114,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     List<LabeledInstruction> isa = new ArrayList<>();
     String name = ctx.ID().getText();
     ArraySymbol var = (ArraySymbol) scope.resolve_recursively(name);
-    int offset = var.getOffset();
+    int arr_offset = var.getOffset();
     // we use the visitor for getting the index, that is saved in a register
     VisitResult idx = visit(ctx.expr());
 
@@ -122,13 +122,13 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     Register rd = this.regAllocator.getFreeRegister();
     Register rv = this.regAllocator.getFreeRegister();
     isa.addAll(idx.instructions());
-    isa.add(LabeledInstruction.of(new ADDI(ra, offset)));
+    isa.add(LabeledInstruction.of(new ADDI(ra, arr_offset)));
     isa.add(LabeledInstruction.of(new ADD(ra, idx.resultRegister())));
     isa.add(LabeledInstruction.of(new EXCH(rv, ra)));
     isa.add(LabeledInstruction.of(new XOR(rd, rv)));
     isa.add(LabeledInstruction.of(new EXCH(rv, ra)));
     isa.add(LabeledInstruction.of(new SUB(ra, idx.resultRegister())));
-    isa.add(LabeledInstruction.of(new SUBI(ra, offset)));
+    isa.add(LabeledInstruction.of(new SUBI(ra, arr_offset)));
     this.regAllocator.freeRegister(ra);
     this.regAllocator.freeRegister(rv);
     this.regAllocator.toGarbage(idx.resultRegister());
@@ -351,7 +351,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     }
     isa.add(LabeledInstruction.of(new ADDI(this.rsp, this.offset)));
     isa.add(LabeledInstruction.of(new BRA("main")));
-    isa.add(LabeledInstruction.of(new SUBI(rsp, offset)));
+    isa.add(LabeledInstruction.of(new SUBI(rsp, this.offset)));
     isa.add(LabeledInstruction.labeled("finish", new FINISH()));
 
     // error routine label
@@ -370,11 +370,11 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     String name = ctx.ID().getText();
     VariableSymbol arr = (VariableSymbol) scope.resolve_recursively(name);
-    int offset = arr.getOffset();
+    int arr_offset = arr.getOffset();
 
     List<LabeledInstruction> isa = new ArrayList<>();
 
-    isa.add(LabeledInstruction.of(new ADDI(ra, offset)));
+    isa.add(LabeledInstruction.of(new ADDI(ra, arr_offset)));
 
     VisitResult e = visit(ctx.expr());
     Register re = e.resultRegister();
@@ -411,7 +411,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     isa.add(LabeledInstruction.of(new EXCH(rd, ra)));
 
     // subtract offset
-    isa.add(LabeledInstruction.of(new SUBI(ra, offset)));
+    isa.add(LabeledInstruction.of(new SUBI(ra, arr_offset)));
 
     // add inverse of expr
     isa.addAll(this.inv.invertListofInstructions(e1));
@@ -439,9 +439,8 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     // 2. add base address to ra
     String name = ctx.ID().getText();
     ArraySymbol arr = (ArraySymbol) scope.resolve_recursively(name);
-    int offset = arr.getOffset();
-    isa.add(LabeledInstruction.of(new ADDI(ra, offset)));
-
+    int arr_offset = arr.getOffset();
+    isa.add(LabeledInstruction.of(new ADDI(ra, arr_offset)));
     // 3. generate code for e2
     e = visit(ctx.expr(1));
     Register re = e.resultRegister();
@@ -483,7 +482,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     isa.addAll(inv.invertListofInstructions(e1));
     isa.addAll(this.ClearGarbage().instructions());
     // 8. subtract base address
-    isa.add(LabeledInstruction.of(new SUBI(ra, offset)));
+    isa.add(LabeledInstruction.of(new SUBI(ra, arr_offset)));
 
     // 9. remove garbage of e1 (inverse of 1.)
     isa.addAll(inv.invertListofInstructions(e2));
