@@ -441,6 +441,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     ArraySymbol arr = (ArraySymbol) scope.resolve_recursively(name);
     int arr_offset = arr.getOffset();
     isa.add(LabeledInstruction.of(new ADDI(ra, arr_offset)));
+
     // 3. generate code for e2
     e = visit(ctx.expr(1));
     Register re = e.resultRegister();
@@ -453,7 +454,6 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     // 4. swap array entry in rd
     isa.add(LabeledInstruction.of(new EXCH(rd, ra)));
-
     // 5. update array entry
     // here we should check for rop assign
     // += -> ADD
@@ -462,13 +462,13 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     switch (ctx.ROP_ASS().getText()) {
       case "+=" -> {
-        isa.add(LabeledInstruction.of(new ADD(ra, re)));
+        isa.add(LabeledInstruction.of(new ADD(rd, re)));
       }
       case "-=" -> {
-        isa.add(LabeledInstruction.of(new SUB(ra, re)));
+        isa.add(LabeledInstruction.of(new SUB(rd, re)));
       }
       case "^=" -> {
-        isa.add(LabeledInstruction.of(new XOR(ra, re)));
+        isa.add(LabeledInstruction.of(new XOR(rd, re)));
       }
       default -> {
         throw new CodeGenerationException("Unknown ROP Assign Symbol " + ctx.ROP_ASS().getText());
