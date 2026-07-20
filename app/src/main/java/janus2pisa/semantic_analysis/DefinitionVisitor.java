@@ -22,7 +22,8 @@ public class DefinitionVisitor extends JanusBaseVisitor<Void> {
     if (VarSym != null) {
       throw new RuntimeException("Semantic Error: Variable already defined -> " + VarName);
     } else {
-      VarSym = new VariableSymbol(VarName, globalScope, offset++);
+      VarSym = new VariableSymbol(VarName, globalScope, offset);
+      this.offset++;
       globalScope.define(VarSym);
     }
     return null;
@@ -37,7 +38,8 @@ public class DefinitionVisitor extends JanusBaseVisitor<Void> {
     if (ArrSym != null) {
       throw new RuntimeException("Semantic Error: Variable Array already defined -> " + VarName);
     } else {
-      ArrSym = new ArraySymbol(VarName, globalScope, offset++, len);
+      ArrSym = new ArraySymbol(VarName, globalScope, offset, len);
+      this.offset += len;
       globalScope.define(ArrSym);
     }
     return null;
