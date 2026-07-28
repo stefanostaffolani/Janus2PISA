@@ -1,14 +1,15 @@
 package janus2pisa.codegen;
 
-import janus2pisa.codegen.exceptions.InterpreterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import janus2pisa.codegen.exceptions.InterpreterException;
+
 public class Interpreter {
-  private final int STACK_SIZE = 100;
+  private final int STACK_SIZE;
   private static ArrayList<Integer> memory;
   private static Inverter inv;
   private static Register[] registers;
@@ -17,7 +18,7 @@ public class Interpreter {
   private static Integer dir;
   private static Map<String, Integer> label2loc;
 
-  public Interpreter() {
+  public Interpreter(int STACK_SIZE) {
     registers = new Register[32];
     for (int i = 0; i < registers.length; i++) {
       registers[i] = new Register("R" + i, 0);
@@ -28,6 +29,7 @@ public class Interpreter {
     dir = 1;
     inv = new Inverter();
     memory = new ArrayList<>();
+    this.STACK_SIZE = STACK_SIZE;
     for (int i = 0; i < STACK_SIZE; i++) {
       memory.add(0);
     }
@@ -227,12 +229,18 @@ public class Interpreter {
       } else {
         this.exec(ins.instruction());
       }
+      int gp = registers[3].getValue();
+      int sp = registers[1].getValue();
+      if (gp != 0 && sp != 0 && gp <= sp) {
+          throw new InterpreterException("Stack Overflow : SP " + sp + " GP " + gp);
+      }
     }
     // Print all registers
     for (Register r : registers) {
       System.out.println(r.getName() + "\t" + r.getValue());
       // System.out.println(r.getValue());
     }
-    System.out.println(memory);
+    System.out.println(memory.subList(0, 20));
+    System.out.println(memory.subList(this.STACK_SIZE - 20, this.STACK_SIZE-1));
   }
 }

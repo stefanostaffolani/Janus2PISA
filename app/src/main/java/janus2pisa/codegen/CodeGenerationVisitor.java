@@ -1,5 +1,10 @@
 package janus2pisa.codegen;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import janus2pisa.JanusBaseVisitor;
 import janus2pisa.JanusParser;
 import janus2pisa.JanusParser.DecContext;
@@ -8,10 +13,6 @@ import janus2pisa.codegen.exceptions.CodeGenerationException;
 import janus2pisa.semantic_analysis.ArraySymbol;
 import janus2pisa.semantic_analysis.Scope;
 import janus2pisa.semantic_analysis.VariableSymbol;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
@@ -20,9 +21,10 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
   private final Inverter inv;
   private int offset = 0;
   private int labelCount = 0;
-  private final Register r0, rsp, rro;
+  private final Register r0, rsp, rro, rgp;
+  private final int MEM_SIZE;
 
-  public CodeGenerationVisitor(Scope globalScope) {
+  public CodeGenerationVisitor(Scope globalScope, int MEM_SIZE) {
     this.scope = globalScope;
     this.regAllocator = new RegisterAllocator(32);
     /*
@@ -30,15 +32,21 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
         - r0 : constant 0
         - sp : stack pointer
         - ro : return offset
+        - gp : garbage pointer used for spills 
+        (Garbage registers can be pushed unto the stack. This requires space,
+         but reduces the number of executed instructions needed for an evaluation)
+         the rgp starts at the end of the stack
     */
     r0 = this.regAllocator.getFreeRegister();
     rsp = this.regAllocator.getFreeRegister();
     rro = this.regAllocator.getFreeRegister();
+    rgp = this.regAllocator.getFreeRegister();
     this.regAllocator.commitRegister(r0);
     this.regAllocator.commitRegister(rsp);
     this.regAllocator.commitRegister(rro);
-
+    this.regAllocator.commitRegister(rgp);
     this.inv = new Inverter();
+    this.MEM_SIZE = MEM_SIZE;
   }
 
   private String newLabel(String prefix) {
@@ -48,7 +56,8 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
   private VisitResult ClearGarbage() {
     List<LabeledInstruction> isa = new ArrayList<>();
     for (Register r : this.regAllocator.GetGarbageRegisters()) {
-      isa.add(LabeledInstruction.of(new XOR(r, r)));
+      isa.add(LabeledInstruction.of(new EXCH(r, rgp)));
+      isa.add(LabeledInstruction.of(new SUBI(rgp, 1)));
       this.regAllocator.freeRegister(r);
     }
     return new VisitResult(isa, null);
@@ -144,6 +153,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     String op = ctx.OP_GEN().getText();
     isa.addAll(left.instructions());
     isa.addAll(right.instructions());
+    // TODO: do the un-computation step and then remove the XOR r r
     return switch (op) {
       case "+" -> {
         isa.add(LabeledInstruction.of(new ADD(left.resultRegister(), right.resultRegister())));
@@ -349,6 +359,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
       decs = visit(dc);
       isa.addAll(decs.instructions());
     }
+    isa.add(LabeledInstruction.of(new ADDI(this.rgp, MEM_SIZE - 1)));
     isa.add(LabeledInstruction.of(new ADDI(this.rsp, this.offset)));
     isa.add(LabeledInstruction.of(new BRA("main")));
     isa.add(LabeledInstruction.of(new SUBI(rsp, this.offset)));
