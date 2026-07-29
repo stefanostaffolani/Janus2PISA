@@ -1,12 +1,11 @@
 package janus2pisa.codegen;
 
+import janus2pisa.codegen.exceptions.InterpreterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-
-import janus2pisa.codegen.exceptions.InterpreterException;
 
 public class Interpreter {
   private final int STACK_SIZE;
@@ -232,7 +231,7 @@ public class Interpreter {
       int gp = registers[3].getValue();
       int sp = registers[1].getValue();
       if (gp != 0 && sp != 0 && gp <= sp) {
-          throw new InterpreterException("Stack Overflow : SP " + sp + " GP " + gp);
+        throw new InterpreterException("Stack Overflow : SP " + sp + " GP " + gp);
       }
     }
     // Print all registers
@@ -241,6 +240,6 @@ public class Interpreter {
       // System.out.println(r.getValue());
     }
     System.out.println(memory.subList(0, 20));
-    System.out.println(memory.subList(this.STACK_SIZE - 20, this.STACK_SIZE-1));
+    System.out.println(memory.subList(this.STACK_SIZE - 20, this.STACK_SIZE - 1));
   }
 }

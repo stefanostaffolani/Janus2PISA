@@ -9,6 +9,7 @@ plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     application
     antlr
+    jacoco
     id("com.diffplug.spotless") version "6.25.0"
 }
 
@@ -71,7 +72,22 @@ tasks.withType<Test> {
         showStandardStreams = true
         events("started", "passed", "failed", "skipped")
     }
+    finalizedBy(tasks.jacocoTestReport)
 }
+
+
 tasks.named<org.gradle.api.plugins.antlr.AntlrTask>("generateGrammarSource") {
     arguments = arguments + listOf("-visitor", "-long-messages")
+}
+
+jacoco {
+    toolVersion = "0.8.14"
+}
+
+tasks.jacocoTestReport {
+    reports {
+        xml.required = false
+        csv.required = false
+        html.outputLocation = layout.buildDirectory.dir("jacocoHtml")
+    }
 }

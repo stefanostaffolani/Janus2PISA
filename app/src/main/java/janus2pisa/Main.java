@@ -1,6 +1,7 @@
 package janus2pisa;
 
 import janus2pisa.codegen.CodeGenerationVisitor;
+import janus2pisa.codegen.Interpreter;
 import janus2pisa.codegen.PisaFormatter;
 import janus2pisa.codegen.VisitResult;
 import janus2pisa.semantic_analysis.DefinitionVisitor;
@@ -10,12 +11,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.*;
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 public class Main {
   public static void main(String[] args) throws Exception {
-    InputStream is = Main.class.getResourceAsStream("/example.janus");
+    InputStream is = Main.class.getResourceAsStream("/array.janus");
     CharStream input = CharStreams.fromStream(is);
     // CharStream input = CharStreams.fromFileName("fib.janus");
 
@@ -42,12 +45,17 @@ public class Main {
     sav.visit(tree);
 
     // start cgen
-    CodeGenerationVisitor cgv = new CodeGenerationVisitor(globalScope);
+    CodeGenerationVisitor cgv = new CodeGenerationVisitor(globalScope, 1000);
     VisitResult isa = cgv.visit(tree);
+
+    Interpreter interpreter = new Interpreter(10000);
+
     try {
       String code = PisaFormatter.printLabeledInstructions(isa.instructions());
 
       Files.writeString(Path.of("output.pisa"), code);
+      interpreter.cpu(isa.instructions());
+
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
