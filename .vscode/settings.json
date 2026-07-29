@@ -1,7 +1,11 @@
 {
-    "java.compile.nullAnalysis.mode": "automatic",
     "java.project.sourcePaths": [
         "app/src/main/java",
         "app/build/generated-src/antlr/main"
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "disabled",
+    "editor.formatOnSave": false,
+    "java.format.enabled": false,
+    "java.saveActions.cleanup": false,
+    "java.compile.nullAnalysis.mode": "automatic"
 }
