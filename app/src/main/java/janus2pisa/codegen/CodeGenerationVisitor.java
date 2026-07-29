@@ -1,10 +1,5 @@
 package janus2pisa.codegen;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import janus2pisa.JanusBaseVisitor;
 import janus2pisa.JanusParser;
 import janus2pisa.JanusParser.DecContext;
@@ -13,6 +8,10 @@ import janus2pisa.codegen.exceptions.CodeGenerationException;
 import janus2pisa.semantic_analysis.ArraySymbol;
 import janus2pisa.semantic_analysis.Scope;
 import janus2pisa.semantic_analysis.VariableSymbol;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
@@ -32,7 +31,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
         - r0 : constant 0
         - sp : stack pointer
         - ro : return offset
-        - gp : garbage pointer used for spills 
+        - gp : garbage pointer used for spills
         (Garbage registers can be pushed unto the stack. This requires space,
          but reduces the number of executed instructions needed for an evaluation)
          the rgp starts at the end of the stack
@@ -392,7 +391,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     isa.addAll(e.instructions()); // invert expression
     List<LabeledInstruction> e1 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e1);
 
@@ -442,7 +441,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     Register ra = e.resultRegister();
     List<LabeledInstruction> e1 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e1);
     isa.addAll(e.instructions());
@@ -459,7 +458,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     isa.addAll(e.instructions());
     List<LabeledInstruction> e2 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e2);
 
@@ -490,13 +489,13 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     isa.add(LabeledInstruction.of(new EXCH(rd, ra)));
 
     // 7. remove garbage of e2 (inverse of 3.)
-    isa.addAll(inv.invertListofInstructions(e1));
+    isa.addAll(inv.invertListofInstructions(e2));
     isa.addAll(this.ClearGarbage().instructions());
     // 8. subtract base address
     isa.add(LabeledInstruction.of(new SUBI(ra, arr_offset)));
 
     // 9. remove garbage of e1 (inverse of 1.)
-    isa.addAll(inv.invertListofInstructions(e2));
+    isa.addAll(inv.invertListofInstructions(e1));
     isa.addAll(this.ClearGarbage().instructions());
     return new VisitResult(isa, null);
   }
@@ -517,7 +516,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     List<LabeledInstruction> e1 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e1);
 
@@ -540,7 +539,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     List<LabeledInstruction> e2 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e2);
 
@@ -579,7 +578,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     // 5. uneval e1
     List<LabeledInstruction> e1 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e1);
     isa.addAll(inv.invertListofInstructions(e1));
@@ -605,7 +604,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     // 11. uneval e2
     List<LabeledInstruction> e2 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e2);
 

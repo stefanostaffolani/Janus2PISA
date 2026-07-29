@@ -6,6 +6,10 @@ public record LabeledInstruction(String label, Instruction instruction) {
     this(label, old.instruction());
   }
 
+  public LabeledInstruction(LabeledInstruction old) {
+    this(old.label(), old.instruction());
+  }
+
   static LabeledInstruction of(Instruction i) {
     return new LabeledInstruction(null, i);
   }
