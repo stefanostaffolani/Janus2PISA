@@ -1,0 +1,11 @@
+i n y
+
+procedure main
+    n += 10
+    from i = 0
+    do
+        skip
+    loop
+        y += i
+        i += 1
+    until i = n
