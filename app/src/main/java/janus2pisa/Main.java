@@ -18,10 +18,17 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 public class Main {
   public static void main(String[] args) throws Exception {
-    InputStream is = Main.class.getResourceAsStream("/array.janus");
-    CharStream input = CharStreams.fromStream(is);
-    // CharStream input = CharStreams.fromFileName("fib.janus");
 
+    if (args.length == 0) {
+      System.err.println("Errore: Specifica il percorso del file .janus da compilare.");
+      System.err.println("Uso: java -jar janus2pisa.jar <percorso_file.janus>");
+      System.exit(1);
+    }
+    String inputFileName = args[0];
+    System.out.println(inputFileName);
+
+    InputStream is = Main.class.getResourceAsStream("/" + inputFileName);
+    CharStream input = CharStreams.fromStream(is);
     // 1. Lexer
     JanusLexer lexer = new JanusLexer(input);
     CommonTokenStream tokens = new CommonTokenStream(lexer);

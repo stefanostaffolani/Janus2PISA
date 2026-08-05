@@ -1,0 +1,8 @@
+x1
+
+procedure main
+    if x1 = 0 then
+        x1 += 1
+    else
+        skip
+    fi x1 = 1

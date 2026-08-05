@@ -1,0 +1,6 @@
+x1 x2
+
+procedure main
+    x1 += 22
+    x2 += 42
+    x1 <=> x2

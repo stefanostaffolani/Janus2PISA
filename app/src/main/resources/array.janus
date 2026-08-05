@@ -1,0 +1,12 @@
+x[10] i n z
+
+procedure main
+    n += 10
+    from i = 0
+    do
+        skip
+    loop
+        x[i] += i
+        z += x[i]
+        i += 1
+    until i = n
