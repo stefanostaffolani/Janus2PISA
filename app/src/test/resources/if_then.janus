@@ -1,0 +1,8 @@
+x1
+
+procedure main
+    if x1 = 42 then
+        skip
+    else
+        x1 += 1
+    fi x1 = 1

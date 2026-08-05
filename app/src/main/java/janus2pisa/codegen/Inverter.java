@@ -1,6 +1,5 @@
 package janus2pisa.codegen;
 
-import janus2pisa.codegen.exceptions.InverterException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,38 +18,8 @@ public class Inverter {
       case SUBI i -> {
         yield new ADDI(i.rd(), i.c());
       }
-      case NEG i -> {
-        yield new NEG(i.rd());
-      }
-      case XOR i -> {
-        yield new XOR(i.rd(), i.rs());
-      }
-      case XORI i -> {
-        yield new XORI(i.rd(), i.c());
-      }
-      case ORX i -> {
-        yield new ORX(i.rd(), i.rs(), i.rt());
-      }
-      case ANDX i -> {
-        yield new ANDX(i.rd(), i.rs(), i.rt());
-      }
-      case SLTX i -> {
-        yield new SLTX(i.rd(), i.rs(), i.rt());
-      }
-      case EXCH i -> {
-        yield new EXCH(i.rd(), i.ra());
-      }
-      case BRA i -> {
-        yield new BRA(i.label());
-      }
-      case RBRA i -> {
-        yield new RBRA(i.label());
-      }
-      case SWAPBR i -> {
-        yield new SWAPBR(i.rd());
-      }
       default -> {
-        throw new InverterException("Unknown instruction");
+        yield instruction;
       }
     };
   }

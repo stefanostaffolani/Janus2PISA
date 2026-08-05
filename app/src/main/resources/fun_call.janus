@@ -1,0 +1,9 @@
+x1 x2 n
+procedure test
+    x1 += 1
+    x2 += x1 + 2
+    n += x1 + x2
+
+procedure main
+    call test
+    

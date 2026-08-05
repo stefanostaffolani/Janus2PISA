@@ -1,0 +1,17 @@
+x1 x2 n i
+procedure fib    
+    from i = 0
+    do 
+        skip
+    loop
+        x1 += x2
+        x1 <=> x2
+        i += 1
+    until i = n
+
+procedure main
+    x1 += 89
+    x2 += 144
+    i += 10
+    n += 10
+    uncall fib

@@ -31,7 +31,8 @@ public sealed interface Instruction
         DATA,
         START,
         FINISH,
-        NOP {}
+        NOP,
+        PANIC {}
 
 record ADD(Register rd, Register rs) implements Instruction {}
 
@@ -74,3 +75,5 @@ record START() implements Instruction {}
 record FINISH() implements Instruction {}
 
 record NOP() implements Instruction {}
+
+record PANIC() implements Instruction {}

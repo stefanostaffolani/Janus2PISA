@@ -5,7 +5,9 @@ import janus2pisa.JanusParser;
 import janus2pisa.JanusParser.DecContext;
 import janus2pisa.JanusParser.ProcContext;
 import janus2pisa.codegen.exceptions.CodeGenerationException;
-import janus2pisa.semantic_analysis.*;
+import janus2pisa.semantic_analysis.ArraySymbol;
+import janus2pisa.semantic_analysis.Scope;
+import janus2pisa.semantic_analysis.VariableSymbol;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,9 +20,10 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
   private final Inverter inv;
   private int offset = 0;
   private int labelCount = 0;
-  private final Register r0, rsp, rro;
+  private final Register r0, rsp, rro, rgp;
+  private final int MEM_SIZE;
 
-  public CodeGenerationVisitor(Scope globalScope) {
+  public CodeGenerationVisitor(Scope globalScope, int MEM_SIZE) {
     this.scope = globalScope;
     this.regAllocator = new RegisterAllocator(32);
     /*
@@ -28,15 +31,21 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
         - r0 : constant 0
         - sp : stack pointer
         - ro : return offset
+        - gp : garbage pointer used for spills
+        (Garbage registers can be pushed unto the stack. This requires space,
+         but reduces the number of executed instructions needed for an evaluation)
+         the rgp starts at the end of the stack
     */
     r0 = this.regAllocator.getFreeRegister();
     rsp = this.regAllocator.getFreeRegister();
     rro = this.regAllocator.getFreeRegister();
+    rgp = this.regAllocator.getFreeRegister();
     this.regAllocator.commitRegister(r0);
     this.regAllocator.commitRegister(rsp);
     this.regAllocator.commitRegister(rro);
-
+    this.regAllocator.commitRegister(rgp);
     this.inv = new Inverter();
+    this.MEM_SIZE = MEM_SIZE;
   }
 
   private String newLabel(String prefix) {
@@ -46,7 +55,8 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
   private VisitResult ClearGarbage() {
     List<LabeledInstruction> isa = new ArrayList<>();
     for (Register r : this.regAllocator.GetGarbageRegisters()) {
-      isa.add(LabeledInstruction.of(new XOR(r, r)));
+      isa.add(LabeledInstruction.of(new EXCH(r, rgp)));
+      isa.add(LabeledInstruction.of(new SUBI(rgp, 1)));
       this.regAllocator.freeRegister(r);
     }
     return new VisitResult(isa, null);
@@ -90,16 +100,16 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     List<LabeledInstruction> isa = new ArrayList<>();
     String name = ctx.ID().getText();
     VariableSymbol var = (VariableSymbol) scope.resolve_recursively(name);
-    int offset = var.getOffset();
+    int var_offset = var.getOffset();
     // use EXCH-XOR-EXCH pattern for variable use
     Register ra = this.regAllocator.getFreeRegister();
     Register rd = this.regAllocator.getFreeRegister();
     Register rv = this.regAllocator.getFreeRegister();
-    isa.add(LabeledInstruction.of(new ADDI(ra, offset)));
+    isa.add(LabeledInstruction.of(new ADDI(ra, var_offset)));
     isa.add(LabeledInstruction.of(new EXCH(rv, ra)));
     isa.add(LabeledInstruction.of(new XOR(rd, rv)));
     isa.add(LabeledInstruction.of(new EXCH(rv, ra)));
-    isa.add(LabeledInstruction.of(new SUBI(ra, offset)));
+    isa.add(LabeledInstruction.of(new SUBI(ra, var_offset)));
     this.regAllocator.freeRegister(ra);
     this.regAllocator.freeRegister(rv);
     this.regAllocator.commitRegister(rd);
@@ -112,7 +122,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     List<LabeledInstruction> isa = new ArrayList<>();
     String name = ctx.ID().getText();
     ArraySymbol var = (ArraySymbol) scope.resolve_recursively(name);
-    int offset = var.getOffset();
+    int arr_offset = var.getOffset();
     // we use the visitor for getting the index, that is saved in a register
     VisitResult idx = visit(ctx.expr());
 
@@ -120,13 +130,13 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     Register rd = this.regAllocator.getFreeRegister();
     Register rv = this.regAllocator.getFreeRegister();
     isa.addAll(idx.instructions());
-    isa.add(LabeledInstruction.of(new ADDI(ra, offset)));
+    isa.add(LabeledInstruction.of(new ADDI(ra, arr_offset)));
     isa.add(LabeledInstruction.of(new ADD(ra, idx.resultRegister())));
     isa.add(LabeledInstruction.of(new EXCH(rv, ra)));
     isa.add(LabeledInstruction.of(new XOR(rd, rv)));
     isa.add(LabeledInstruction.of(new EXCH(rv, ra)));
     isa.add(LabeledInstruction.of(new SUB(ra, idx.resultRegister())));
-    isa.add(LabeledInstruction.of(new SUBI(ra, offset)));
+    isa.add(LabeledInstruction.of(new SUBI(ra, arr_offset)));
     this.regAllocator.freeRegister(ra);
     this.regAllocator.freeRegister(rv);
     this.regAllocator.toGarbage(idx.resultRegister());
@@ -142,6 +152,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     String op = ctx.OP_GEN().getText();
     isa.addAll(left.instructions());
     isa.addAll(right.instructions());
+    // TODO: do the un-computation step and then remove the XOR r r
     return switch (op) {
       case "+" -> {
         isa.add(LabeledInstruction.of(new ADD(left.resultRegister(), right.resultRegister())));
@@ -239,40 +250,67 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
         // x=y iff !(x < y) && !(y < x)
         // using de morgan -> ORX
         // using XORI 1 for negation of 0 or 1
-        Register rs = this.regAllocator.getFreeRegister();
+        // Register rs = this.regAllocator.getFreeRegister();
+        // Register rd = this.regAllocator.getFreeRegister();
+        // Register rt = this.regAllocator.getFreeRegister();
+        // isa.add(LabeledInstruction.of(new SLTX(rs, left.resultRegister(),
+        // right.resultRegister())));
+        // isa.add(LabeledInstruction.of(new SLTX(rt, right.resultRegister(),
+        // left.resultRegister())));
+        // this.regAllocator.commitRegister(rt);
+        // this.regAllocator.commitRegister(rs);
+        // isa.add(LabeledInstruction.of(new ORX(rd, rs, rt)));
+        // isa.add(LabeledInstruction.of(new XORI(rd, 1)));
+
+        // this.regAllocator.toGarbage(rt);
+        // this.regAllocator.toGarbage(rs);
+
+        // this.regAllocator.toGarbage(left.resultRegister());
+        // this.regAllocator.toGarbage(right.resultRegister());
+        // this.regAllocator.commitRegister(rd);
+
+        // Following the paper we can use only 1 register
+        // SLTX rd r_x r_y
+        // SLTX rd r_x r_y
+        // XORI rd 1
         Register rd = this.regAllocator.getFreeRegister();
-        Register rt = this.regAllocator.getFreeRegister();
-        isa.add(LabeledInstruction.of(new SLTX(rs, left.resultRegister(), right.resultRegister())));
-        isa.add(LabeledInstruction.of(new SLTX(rt, right.resultRegister(), left.resultRegister())));
-        this.regAllocator.commitRegister(rt);
-        this.regAllocator.commitRegister(rs);
-        isa.add(LabeledInstruction.of(new ORX(rd, rs, rt)));
+        isa.add(LabeledInstruction.of(new SLTX(rd, left.resultRegister(), right.resultRegister())));
+        isa.add(LabeledInstruction.of(new SLTX(rd, right.resultRegister(), left.resultRegister())));
         isa.add(LabeledInstruction.of(new XORI(rd, 1)));
-
-        this.regAllocator.toGarbage(rt);
-        this.regAllocator.toGarbage(rs);
-
         this.regAllocator.toGarbage(left.resultRegister());
         this.regAllocator.toGarbage(right.resultRegister());
         this.regAllocator.commitRegister(rd);
         yield new VisitResult(isa, rd);
       }
       case "!=" -> {
-        Register rs = this.regAllocator.getFreeRegister();
+        // Following the paper we can use only 1 register
+        // SLTX rd r_x r_y
+        // SLTX rd r_x r_y
+        // XORI rd 1
         Register rd = this.regAllocator.getFreeRegister();
-        Register rt = this.regAllocator.getFreeRegister();
-        isa.add(LabeledInstruction.of(new SLTX(rs, left.resultRegister(), right.resultRegister())));
-        isa.add(LabeledInstruction.of(new SLTX(rt, right.resultRegister(), left.resultRegister())));
-        this.regAllocator.commitRegister(rt);
-        this.regAllocator.commitRegister(rs);
-        isa.add(LabeledInstruction.of(new ORX(rd, rs, rt)));
-
-        this.regAllocator.toGarbage(rt);
-        this.regAllocator.toGarbage(rs);
+        isa.add(LabeledInstruction.of(new SLTX(rd, left.resultRegister(), right.resultRegister())));
+        isa.add(LabeledInstruction.of(new SLTX(rd, right.resultRegister(), left.resultRegister())));
 
         this.regAllocator.toGarbage(left.resultRegister());
         this.regAllocator.toGarbage(right.resultRegister());
         this.regAllocator.commitRegister(rd);
+        // Register rs = this.regAllocator.getFreeRegister();
+        // Register rd = this.regAllocator.getFreeRegister();
+        // Register rt = this.regAllocator.getFreeRegister();
+        // isa.add(LabeledInstruction.of(new SLTX(rs, left.resultRegister(),
+        // right.resultRegister())));
+        // isa.add(LabeledInstruction.of(new SLTX(rt, right.resultRegister(),
+        // left.resultRegister())));
+        // this.regAllocator.commitRegister(rt);
+        // this.regAllocator.commitRegister(rs);
+        // isa.add(LabeledInstruction.of(new ORX(rd, rs, rt)));
+
+        // this.regAllocator.toGarbage(rt);
+        // this.regAllocator.toGarbage(rs);
+
+        // this.regAllocator.toGarbage(left.resultRegister());
+        // this.regAllocator.toGarbage(right.resultRegister());
+        // this.regAllocator.commitRegister(rd);
         yield new VisitResult(isa, rd);
       }
       default -> throw new CodeGenerationException("Unknown operator " + op);
@@ -298,10 +336,10 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     Register rc = this.regAllocator.getFreeRegister();
     isa.add(LabeledInstruction.of(new ADDI(ra, offset1)));
     isa.add(LabeledInstruction.of(new ADDI(rb, offset2)));
-    isa.add(LabeledInstruction.of(new EXCH(ra, rc)));
-    isa.add(LabeledInstruction.of(new EXCH(rb, rc)));
-    isa.add(LabeledInstruction.of(new EXCH(ra, rc)));
-    isa.add(LabeledInstruction.of(new EXCH(ra, rc)));
+    isa.add(LabeledInstruction.of(new EXCH(rc, ra)));
+    isa.add(LabeledInstruction.of(new EXCH(rc, rb)));
+    isa.add(LabeledInstruction.of(new EXCH(rc, ra)));
+    // isa.add(LabeledInstruction.of(new EXCH(ra, rc)));
     isa.add(LabeledInstruction.of(new SUBI(ra, offset1)));
     isa.add(LabeledInstruction.of(new SUBI(rb, offset2)));
     return new VisitResult(isa, null);
@@ -320,15 +358,15 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
       decs = visit(dc);
       isa.addAll(decs.instructions());
     }
+    isa.add(LabeledInstruction.of(new ADDI(this.rgp, MEM_SIZE - 1)));
     isa.add(LabeledInstruction.of(new ADDI(this.rsp, this.offset)));
     isa.add(LabeledInstruction.of(new BRA("main")));
-    isa.add(LabeledInstruction.of(new SUBI(rsp, offset)));
+    isa.add(LabeledInstruction.of(new SUBI(rsp, this.offset)));
     isa.add(LabeledInstruction.labeled("finish", new FINISH()));
 
     // error routine label
 
-    isa.add(LabeledInstruction.labeled("error", new BRA("error_loop")));
-    isa.add(LabeledInstruction.labeled("error_loop", new BRA("error")));
+    isa.add(LabeledInstruction.labeled("error", new PANIC()));
 
     return new VisitResult(isa, null);
   }
@@ -342,18 +380,18 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     String name = ctx.ID().getText();
     VariableSymbol arr = (VariableSymbol) scope.resolve_recursively(name);
-    int offset = arr.getOffset();
+    int arr_offset = arr.getOffset();
 
     List<LabeledInstruction> isa = new ArrayList<>();
 
-    isa.add(LabeledInstruction.of(new ADDI(ra, offset)));
+    isa.add(LabeledInstruction.of(new ADDI(ra, arr_offset)));
 
     VisitResult e = visit(ctx.expr());
     Register re = e.resultRegister();
     isa.addAll(e.instructions()); // invert expression
     List<LabeledInstruction> e1 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e1);
 
@@ -366,13 +404,13 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     switch (ctx.ROP_ASS().getText()) {
       case "+=" -> {
-        isa.add(LabeledInstruction.of(new ADD(ra, re)));
+        isa.add(LabeledInstruction.of(new ADD(rd, re)));
       }
       case "-=" -> {
-        isa.add(LabeledInstruction.of(new SUB(ra, re)));
+        isa.add(LabeledInstruction.of(new SUB(rd, re)));
       }
       case "^=" -> {
-        isa.add(LabeledInstruction.of(new XOR(ra, re)));
+        isa.add(LabeledInstruction.of(new XOR(rd, re)));
       }
       default -> {
         throw new CodeGenerationException("Unknown ROP Assign Symbol " + ctx.ROP_ASS().getText());
@@ -383,12 +421,11 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     isa.add(LabeledInstruction.of(new EXCH(rd, ra)));
 
     // subtract offset
-    isa.add(LabeledInstruction.of(new SUBI(ra, offset)));
+    isa.add(LabeledInstruction.of(new SUBI(ra, arr_offset)));
 
     // add inverse of expr
     isa.addAll(this.inv.invertListofInstructions(e1));
     isa.addAll(this.ClearGarbage().instructions());
-
     return new VisitResult(isa, null);
   }
 
@@ -404,7 +441,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     Register ra = e.resultRegister();
     List<LabeledInstruction> e1 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e1);
     isa.addAll(e.instructions());
@@ -412,8 +449,8 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     // 2. add base address to ra
     String name = ctx.ID().getText();
     ArraySymbol arr = (ArraySymbol) scope.resolve_recursively(name);
-    int offset = arr.getOffset();
-    isa.add(LabeledInstruction.of(new ADDI(ra, offset)));
+    int arr_offset = arr.getOffset();
+    isa.add(LabeledInstruction.of(new ADDI(ra, arr_offset)));
 
     // 3. generate code for e2
     e = visit(ctx.expr(1));
@@ -421,13 +458,12 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     isa.addAll(e.instructions());
     List<LabeledInstruction> e2 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e2);
 
     // 4. swap array entry in rd
     isa.add(LabeledInstruction.of(new EXCH(rd, ra)));
-
     // 5. update array entry
     // here we should check for rop assign
     // += -> ADD
@@ -436,13 +472,13 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     switch (ctx.ROP_ASS().getText()) {
       case "+=" -> {
-        isa.add(LabeledInstruction.of(new ADD(ra, re)));
+        isa.add(LabeledInstruction.of(new ADD(rd, re)));
       }
       case "-=" -> {
-        isa.add(LabeledInstruction.of(new SUB(ra, re)));
+        isa.add(LabeledInstruction.of(new SUB(rd, re)));
       }
       case "^=" -> {
-        isa.add(LabeledInstruction.of(new XOR(ra, re)));
+        isa.add(LabeledInstruction.of(new XOR(rd, re)));
       }
       default -> {
         throw new CodeGenerationException("Unknown ROP Assign Symbol " + ctx.ROP_ASS().getText());
@@ -453,13 +489,13 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     isa.add(LabeledInstruction.of(new EXCH(rd, ra)));
 
     // 7. remove garbage of e2 (inverse of 3.)
-    isa.addAll(inv.invertListofInstructions(e1));
+    isa.addAll(inv.invertListofInstructions(e2));
     isa.addAll(this.ClearGarbage().instructions());
     // 8. subtract base address
-    isa.add(LabeledInstruction.of(new SUBI(ra, offset)));
+    isa.add(LabeledInstruction.of(new SUBI(ra, arr_offset)));
 
     // 9. remove garbage of e1 (inverse of 1.)
-    isa.addAll(inv.invertListofInstructions(e2));
+    isa.addAll(inv.invertListofInstructions(e1));
     isa.addAll(this.ClearGarbage().instructions());
     return new VisitResult(isa, null);
   }
@@ -473,7 +509,6 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     String test_false_label = this.newLabel("test_false");
     String assert_true_label = this.newLabel("assert_true");
     String assert_label = this.newLabel("assert");
-
     isa.add(LabeledInstruction.of(new BNE(rt, this.r0, "error")));
 
     VisitResult e = visit(ctx.expr(0));
@@ -481,51 +516,38 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
 
     List<LabeledInstruction> e1 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e1);
 
     isa.addAll(e.instructions());
-
     isa.add(LabeledInstruction.of(new XOR(rt, re)));
-
     isa.addAll(inv.invertListofInstructions(e1));
     isa.addAll(this.ClearGarbage().instructions());
-
     isa.add(LabeledInstruction.labeled(test_label, new BEQ(rt, this.r0, test_false_label)));
-
     isa.add(LabeledInstruction.of(new XORI(rt, 1)));
-
     VisitResult s1 = visit(ctx.stmBlk(0));
     isa.addAll(s1.instructions());
-
     isa.add(LabeledInstruction.of(new XORI(rt, 1)));
-
     isa.add(LabeledInstruction.labeled(assert_true_label, new BRA(assert_label)));
-
     isa.add(LabeledInstruction.labeled(test_false_label, new BRA(test_label)));
-
     VisitResult s2 = visit(ctx.stmBlk(1));
     isa.addAll(s2.instructions());
-
     isa.add(LabeledInstruction.labeled(assert_label, new BNE(rt, r0, assert_true_label)));
-
-    e = visit(ctx.expr(0));
+    e = visit(ctx.expr(1));
     re = e.resultRegister();
 
     List<LabeledInstruction> e2 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e2);
 
     isa.addAll(e.instructions());
-
     isa.add(LabeledInstruction.of(new XOR(rt, re)));
     isa.addAll(inv.invertListofInstructions(e2));
     isa.addAll(this.ClearGarbage().instructions());
     isa.add(LabeledInstruction.of(new BNE(rt, r0, "error")));
-
     return new VisitResult(isa, null);
   }
 
@@ -556,7 +578,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     // 5. uneval e1
     List<LabeledInstruction> e1 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e1);
     isa.addAll(inv.invertListofInstructions(e1));
@@ -582,7 +604,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     // 11. uneval e2
     List<LabeledInstruction> e2 =
         e.instructions().stream()
-            .map(old -> new LabeledInstruction(old.label(), old))
+            .map(LabeledInstruction::new)
             .collect(Collectors.toCollection(ArrayList::new));
     Collections.reverse(e2);
 
@@ -615,9 +637,9 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
     List<LabeledInstruction> isa = new ArrayList<>();
 
     isa.add(LabeledInstruction.labeled(label_top, new BRA(label_bottom)));
-    isa.add(LabeledInstruction.labeled(name, new SUBI(this.rsp, 1)));
+    isa.add(LabeledInstruction.of(new SUBI(this.rsp, 1)));
     isa.add(LabeledInstruction.of(new EXCH(this.rro, this.rsp)));
-    isa.add(LabeledInstruction.of(new SWAPBR(this.rro)));
+    isa.add(LabeledInstruction.labeled(name, new SWAPBR(this.rro)));
     isa.add(LabeledInstruction.of(new NEG(this.rro)));
     isa.add(LabeledInstruction.of(new EXCH(this.rro, this.rsp)));
     isa.add(LabeledInstruction.of(new ADDI(this.rsp, 1)));
@@ -632,7 +654,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
   public VisitResult visitCallStm(JanusParser.CallStmContext ctx) {
     List<LabeledInstruction> isa = new ArrayList<>();
     String name = ctx.ID().getText();
-    isa.add(LabeledInstruction.of(new RBRA(name)));
+    isa.add(LabeledInstruction.of(new BRA(name)));
     return new VisitResult(isa, null);
   }
 
@@ -640,7 +662,7 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
   public VisitResult visitUncallStm(JanusParser.UncallStmContext ctx) {
     List<LabeledInstruction> isa = new ArrayList<>();
     String name = ctx.ID().getText();
-    isa.add(LabeledInstruction.of(new BRA(name)));
+    isa.add(LabeledInstruction.of(new RBRA(name)));
     return new VisitResult(isa, null);
   }
 

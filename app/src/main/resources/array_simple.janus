@@ -1,0 +1,8 @@
+z x[10] y 
+
+procedure main
+    x[9] += 42 
+    y += 2
+    x[y] += 47
+    z += 79
+    x[y] += z
