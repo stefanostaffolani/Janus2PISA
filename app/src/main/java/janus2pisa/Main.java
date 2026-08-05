@@ -20,12 +20,10 @@ public class Main {
   public static void main(String[] args) throws Exception {
 
     if (args.length == 0) {
-      System.err.println("Errore: Specifica il percorso del file .janus da compilare.");
-      System.err.println("Uso: java -jar janus2pisa.jar <percorso_file.janus>");
+      System.err.println("Error: Specify a file (.janus) in resources.");
       System.exit(1);
     }
     String inputFileName = args[0];
-    System.out.println(inputFileName);
 
     InputStream is = Main.class.getResourceAsStream("/" + inputFileName);
     CharStream input = CharStreams.fromStream(is);
