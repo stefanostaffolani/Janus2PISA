@@ -237,9 +237,10 @@ public class Interpreter {
     // Print all registers
     for (Register r : registers) {
       System.out.println(r.getName() + "\t" + r.getValue());
-      // System.out.println(r.getValue());
     }
+    System.out.println("Dump of the first 20 memory locations");
     System.out.println(memory.subList(0, 20));
+    System.out.println("Dump of the last 20 memory locations");
     System.out.println(memory.subList(this.STACK_SIZE - 20, this.STACK_SIZE - 1));
   }
 }

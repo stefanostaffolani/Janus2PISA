@@ -294,23 +294,6 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
         this.regAllocator.toGarbage(left.resultRegister());
         this.regAllocator.toGarbage(right.resultRegister());
         this.regAllocator.commitRegister(rd);
-        // Register rs = this.regAllocator.getFreeRegister();
-        // Register rd = this.regAllocator.getFreeRegister();
-        // Register rt = this.regAllocator.getFreeRegister();
-        // isa.add(LabeledInstruction.of(new SLTX(rs, left.resultRegister(),
-        // right.resultRegister())));
-        // isa.add(LabeledInstruction.of(new SLTX(rt, right.resultRegister(),
-        // left.resultRegister())));
-        // this.regAllocator.commitRegister(rt);
-        // this.regAllocator.commitRegister(rs);
-        // isa.add(LabeledInstruction.of(new ORX(rd, rs, rt)));
-
-        // this.regAllocator.toGarbage(rt);
-        // this.regAllocator.toGarbage(rs);
-
-        // this.regAllocator.toGarbage(left.resultRegister());
-        // this.regAllocator.toGarbage(right.resultRegister());
-        // this.regAllocator.commitRegister(rd);
         yield new VisitResult(isa, rd);
       }
       default -> throw new CodeGenerationException("Unknown operator " + op);
