@@ -3,7 +3,7 @@ A simple Janus compiler for Pendulum Instruction Set Architecture currently unde
 
 ## Description
 This project is inspired by the PyJanus2PISA compiler developed by Yokoyama, and it is my first project in the field of Reversible Computing. The compiler is built using ANTLR visitors, and the compilation techniques implemented are described in *Clean Translation of an Imperative Reversible Programming Language*.
-A register is cleared performing an EXCH on a clean memory location pointed by the R3 register (Garbage Pointer). The memory location used for spills grows in opposite way with respect to the Stack. If the SP and the GP meets at some point the Interpreter will raise an exception. Spills and local uncomputation were chosen for their simplicity. 
+<!-- A register is cleared performing an EXCH on a clean memory location pointed by the R3 register (Garbage Pointer). The memory location used for spills grows in opposite way with respect to the Stack. If the SP and the GP meets at some point the Interpreter will raise an exception. Spills and local uncomputation were chosen for their simplicity.-->
 ## Build and Run
 ```sh
 ./gradlew build run --args="fib_bwd.janus"

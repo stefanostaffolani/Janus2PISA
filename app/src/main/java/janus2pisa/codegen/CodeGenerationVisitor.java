@@ -55,8 +55,8 @@ public class CodeGenerationVisitor extends JanusBaseVisitor<VisitResult> {
   private VisitResult ClearGarbage() {
     List<LabeledInstruction> isa = new ArrayList<>();
     for (Register r : this.regAllocator.GetGarbageRegisters()) {
-      isa.add(LabeledInstruction.of(new EXCH(r, rgp)));
-      isa.add(LabeledInstruction.of(new SUBI(rgp, 1)));
+      // isa.add(LabeledInstruction.of(new EXCH(r, rgp)));
+      // isa.add(LabeledInstruction.of(new SUBI(rgp, 1)));
       this.regAllocator.freeRegister(r);
     }
     return new VisitResult(isa, null);
