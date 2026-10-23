@@ -3,6 +3,7 @@ package janus2pisa;
 import janus2pisa.codegen.CodeGenerationVisitor;
 import janus2pisa.codegen.Interpreter;
 import janus2pisa.codegen.PisaFormatter;
+import janus2pisa.codegen.RIL.RILGenerationVisitor;
 import janus2pisa.codegen.VisitResult;
 import janus2pisa.semantic_analysis.DefinitionVisitor;
 import janus2pisa.semantic_analysis.Scope;
@@ -54,11 +55,15 @@ public class Main {
     VisitResult isa = cgv.visit(tree);
 
     Interpreter interpreter = new Interpreter(10000);
+    RILGenerationVisitor rilv = new RILGenerationVisitor(globalScope);
+    String ril = rilv.visit(tree);
 
     try {
       String code = PisaFormatter.printLabeledInstructions(isa.instructions());
 
       Files.writeString(Path.of("output.pisa"), code);
+      Files.writeString(Path.of("output.ril"), ril);
+
       interpreter.cpu(isa.instructions());
 
     } catch (IOException e) {
